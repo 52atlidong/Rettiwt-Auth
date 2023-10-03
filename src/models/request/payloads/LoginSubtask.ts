@@ -10,6 +10,7 @@ import { UserIdentifierInput } from './subtasks/UserIdentifier';
 import { AlternateUserIdentifierInput } from './subtasks/AlternateUserIdentifier';
 import { PasswordInput } from './subtasks/Password';
 import { AccountDuplicationCheckInput } from './subtasks/AccountDuplicationCheck';
+import { LoginAcidInput } from './subtasks/LoginAcid';
 
 /**
  * The payload to be sent for each login subtask.
@@ -66,6 +67,8 @@ class LoginSubtaskInput implements ILoginSubtaskInput {
 			this.enter_password = new PasswordInput(inputText);
 		} else if (subtaskId == ELoginSubtasks.ACCOUNT_DUPLICATION_CHECK) {
 			this.check_logged_in_account = new AccountDuplicationCheckInput();
+		} else if (subtaskId == ELoginSubtasks.LOGIN_ACID && inputText) {
+			this.enter_text = new AlternateUserIdentifierInput(inputText);
 		}
 	}
 }

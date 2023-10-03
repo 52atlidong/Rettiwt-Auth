@@ -186,10 +186,17 @@ export class Auth {
 
 					// Getting the flow token required for next subtask
 					this.flowToken = res.data.flow_token;
-
+					// console.log(this.flowToken);
 					// If this is the last subtask, namely ACCOUNT_DUPLICATION_CHECK, setting the AuthCredentials
-					if (this.subtasks[i] == ELoginSubtasks.ACCOUNT_DUPLICATION_CHECK) {
-						this.cred = new AuthCredential(res.headers['set-cookie'] as string[]);
+					if (this.subtasks[i] == ELoginSubtasks.ACCOUNT_DUPLICATION_CHECK
+					) {
+
+						if (res.data.subtasks.map((subtask) => subtask.subtask_id).includes(ELoginSubtasks.LOGIN_ACID)) {
+							console.log('need check email');
+						} else {
+							this.cred = new AuthCredential(res.headers['set-cookie'] as string[]);
+						}
+
 					}
 				})
 				/**
@@ -204,4 +211,20 @@ export class Auth {
 
 		return this.cred;
 	}
+
+	async checkEmail(code: string): Promise<AuthCredential> {
+		const payload: LoginSubtaskPayload = new LoginSubtaskPayload(ELoginSubtasks.LOGIN_ACID, this.flowToken, code);
+		await axios
+			.post<ILoginSubtaskResponse>(ELoginUrls.LOGIN_SUBTASK, payload, {
+				headers: { ...this.cred.toHeader() },
+			}).then((res) => {
+				this.cred = new AuthCredential(res.headers['set-cookie'] as string[]);
+			}).catch((err: AxiosError<ILoginSubtaskResponse>) => {
+				// console.log(err);
+				// console.log(err.response?.data);
+				throw new Error(this.parseAuthError(err, ELoginSubtasks.LOGIN_ACID));
+			});
+		return this.cred;
+	}
+
 }

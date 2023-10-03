@@ -4,6 +4,7 @@ import { IUserIdentifierInput } from './subtasks/UserIdentifier';
 import { IAlternateUserIdentifierInput } from './subtasks/AlternateUserIdentifier';
 import { IPasswordInput } from './subtasks/Password';
 import { IAccountDuplicationCheck } from './subtasks/AccountDuplicationCheck';
+import { ILoginAcidInput } from './subtasks/LoginAcid';
 
 export interface ILoginSubtaskPayload {
 	flow_token: string;
