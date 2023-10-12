@@ -13,7 +13,9 @@ import { AuthCredential } from './models/AuthCredential';
 import { AccountCredential } from './models/AccountCredential';
 import { LoginSubtaskPayload } from './models/request/payloads/LoginSubtask';
 import { EAuthenticationErrors } from './enums/Authentication';
+import https, { Agent } from 'https';
 
+import { HttpsProxyAgent } from 'https-proxy-agent';
 /**
  * A class that deals with authenticating against Twitter API.
  *
@@ -29,9 +31,12 @@ export class Auth {
 	/** The order in which the login subtasks must be executed. */
 	private subtasks: ELoginSubtasks[];
 
-	constructor() {
+	private readonly httpsAgent: Agent;
+
+	constructor(proxyUrl?: URL) {
 		this.flowToken = '';
 		this.cred = new AuthCredential();
+		this.httpsAgent = this.getHttpsAgent(proxyUrl);
 		this.subtasks = [
 			ELoginSubtasks.JS_INSTRUMENTATION,
 			ELoginSubtasks.ENTER_USER_IDENTIFIER,
@@ -39,6 +44,13 @@ export class Auth {
 			ELoginSubtasks.ENTER_PASSWORD,
 			ELoginSubtasks.ACCOUNT_DUPLICATION_CHECK,
 		];
+	}
+
+	private getHttpsAgent(proxyUrl?: URL): Agent {
+		if (proxyUrl) {
+			return new HttpsProxyAgent(proxyUrl);
+		}
+		return new https.Agent();
 	}
 
 	/**
@@ -108,6 +120,7 @@ export class Auth {
 		await axios
 			.post<ILoginSubtaskResponse>(ELoginUrls.INITIATE_LOGIN, null, {
 				headers: { ...this.cred.toHeader() },
+				httpsAgent: this.httpsAgent,
 			})
 			.then((res) => {
 				// Setting the flow token
@@ -133,6 +146,7 @@ export class Auth {
 		await axios
 			.post<IGuestTokenResponse>(ELoginUrls.GUEST_TOKEN, null, {
 				headers: { ...cred.toHeader() },
+				httpsAgent: this.httpsAgent,
 			})
 			.then((res) => {
 				cred.guestToken = res.data.guest_token;
@@ -165,6 +179,7 @@ export class Auth {
 			await axios
 				.post<ILoginSubtaskResponse>(ELoginUrls.LOGIN_SUBTASK, payload, {
 					headers: { ...this.cred.toHeader() },
+					httpsAgent: this.httpsAgent,
 				})
 				.then((res) => {
 					/**
@@ -217,6 +232,7 @@ export class Auth {
 		await axios
 			.post<ILoginSubtaskResponse>(ELoginUrls.LOGIN_SUBTASK, payload, {
 				headers: { ...this.cred.toHeader() },
+				httpsAgent: this.httpsAgent,
 			}).then((res) => {
 				this.cred = new AuthCredential(res.headers['set-cookie'] as string[]);
 			}).catch((err: AxiosError<ILoginSubtaskResponse>) => {
