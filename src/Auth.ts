@@ -16,6 +16,7 @@ import { EAuthenticationErrors } from './enums/Authentication';
 import https, { Agent } from 'https';
 
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { SocksProxyAgent } from 'socks-proxy-agent';
 /**
  * A class that deals with authenticating against Twitter API.
  *
@@ -48,6 +49,9 @@ export class Auth {
 
 	private getHttpsAgent(proxyUrl?: URL): Agent {
 		if (proxyUrl) {
+			if (proxyUrl.toString().startsWith('socks')) {
+				return new SocksProxyAgent(proxyUrl);
+			}
 			return new HttpsProxyAgent(proxyUrl);
 		}
 		return new https.Agent();
@@ -74,7 +78,10 @@ export class Auth {
 			return new LoginSubtaskPayload(subtask, flowToken, accCred.userName);
 		} else if (subtask == ELoginSubtasks.ENTER_PASSWORD) {
 			return new LoginSubtaskPayload(subtask, flowToken, accCred.password);
-		} else {
+		} else if (subtask == ELoginSubtasks.LOGIN_TWO_FACTOR_AUTH_CHALLENGE) {
+			return new LoginSubtaskPayload(subtask, flowToken, accCred.code);
+		}
+		else {
 			return new LoginSubtaskPayload(subtask, flowToken);
 		}
 	}
@@ -155,6 +162,50 @@ export class Auth {
 		return cred;
 	}
 
+	async getUserCredentialNew(accCred: AccountCredential): Promise<AuthCredential> {
+		let task: ELoginSubtasks | undefined = ELoginSubtasks.JS_INSTRUMENTATION;
+		this.cred = await this.getGuestCredential();
+		await this.initiateLogin();
+		while (task) {
+			const payload: LoginSubtaskPayload = this.getSubtaskPayload(task, this.flowToken, accCred);
+			await axios
+				.post<ILoginSubtaskResponse>(ELoginUrls.LOGIN_SUBTASK, payload, {
+					headers: { ...this.cred.toHeader() },
+					httpsAgent: this.httpsAgent,
+				})
+				.then((res) => {
+					this.flowToken = res.data.flow_token;
+					if (res.data.subtasks.map((subtask) => subtask.subtask_id).includes(ELoginSubtasks.ENTER_USER_IDENTIFIER)) {
+						task = ELoginSubtasks.ENTER_USER_IDENTIFIER;
+					} else if (res.data.subtasks.map((subtask) => subtask.subtask_id).includes(ELoginSubtasks.ENTER_ALTERNATE_USER_IDENTIFIER)) {
+						task = ELoginSubtasks.ENTER_ALTERNATE_USER_IDENTIFIER;
+					} else if (res.data.subtasks.map((subtask) => subtask.subtask_id).includes(ELoginSubtasks.ENTER_PASSWORD)) {
+						task = ELoginSubtasks.ENTER_PASSWORD;
+					} else if (res.data.subtasks.map((subtask) => subtask.subtask_id).includes(ELoginSubtasks.ACCOUNT_DUPLICATION_CHECK)) {
+						task = ELoginSubtasks.ACCOUNT_DUPLICATION_CHECK;
+					} else if (res.data.subtasks.map((subtask) => subtask.subtask_id).includes(ELoginSubtasks.LOGIN_TWO_FACTOR_AUTH_CHALLENGE)) {
+						task = ELoginSubtasks.LOGIN_TWO_FACTOR_AUTH_CHALLENGE;
+					} else if (res.data.subtasks.map((subtask) => subtask.subtask_id).includes(ELoginSubtasks.LOGIN_SUCCESS_SUBTASK)) {
+						this.cred = new AuthCredential(res.headers['set-cookie'] as string[]);
+						task = undefined;
+					}else {
+						throw new Error(`Uncheck task ${task!}`);
+						task = undefined;
+					}
+					// if(res.data.subtasks.map((subtask) => subtask.subtask_id).includes(ELoginSubtasks))
+				})
+				/**
+				 * Catching any error that might have arised in the authentication process.
+				 *
+				 * Then parsing that error to generate a simplified error message, which is then thrown.
+				 */
+				.catch((err: AxiosError<ILoginSubtaskResponse>) => {
+					throw new Error(this.parseAuthError(err, task!));
+				});
+		}
+		return this.cred;
+	}
+
 	/**
 	 * Fetches the credentials for user authentication, from Twitter API.
 	 *
@@ -174,7 +225,6 @@ export class Auth {
 		for (let i: number = 0; i < this.subtasks.length; i++) {
 			// Preparing the subtask payload
 			const payload: LoginSubtaskPayload = this.getSubtaskPayload(this.subtasks[i], this.flowToken, accCred);
-
 			// Executing the subtask
 			await axios
 				.post<ILoginSubtaskResponse>(ELoginUrls.LOGIN_SUBTASK, payload, {
@@ -205,8 +255,8 @@ export class Auth {
 					// If this is the last subtask, namely ACCOUNT_DUPLICATION_CHECK, setting the AuthCredentials
 					if (this.subtasks[i] == ELoginSubtasks.ACCOUNT_DUPLICATION_CHECK
 					) {
-
-						if (res.data.subtasks.map((subtask) => subtask.subtask_id).includes(ELoginSubtasks.LOGIN_ACID)) {
+						console.log(res.data.subtasks);
+						if (res.data.subtasks.map((subtask) => subtask.subtask_id).includes('LoginTwoFactorAuthChallenge')) {
 							console.log('need check email');
 						} else {
 							this.cred = new AuthCredential(res.headers['set-cookie'] as string[]);

@@ -69,6 +69,8 @@ class LoginSubtaskInput implements ILoginSubtaskInput {
 			this.check_logged_in_account = new AccountDuplicationCheckInput();
 		} else if (subtaskId == ELoginSubtasks.LOGIN_ACID && inputText) {
 			this.enter_text = new AlternateUserIdentifierInput(inputText);
+		} else if (subtaskId == ELoginSubtasks.LOGIN_TWO_FACTOR_AUTH_CHALLENGE && inputText) {
+			this.enter_text = new AlternateUserIdentifierInput(inputText);
 		}
 	}
 }

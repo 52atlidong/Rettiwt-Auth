@@ -20,5 +20,7 @@ export enum ELoginSubtasks {
 	ENTER_ALTERNATE_USER_IDENTIFIER = 'LoginEnterAlternateIdentifierSubtask',
 	ENTER_PASSWORD = 'LoginEnterPassword',
 	ACCOUNT_DUPLICATION_CHECK = 'AccountDuplicationCheck',
-	LOGIN_ACID= 'LoginAcid',
+	LOGIN_ACID = 'LoginAcid',
+	LOGIN_TWO_FACTOR_AUTH_CHALLENGE = 'LoginTwoFactorAuthChallenge',
+	LOGIN_SUCCESS_SUBTASK = 'LoginSuccessSubtask',
 }

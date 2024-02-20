@@ -12,4 +12,6 @@ export interface IAccountCredential {
 
 	/** The password to the Twitter account. */
 	password: string;
+
+	code: string;
 }

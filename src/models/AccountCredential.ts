@@ -16,6 +16,8 @@ export class AccountCredential implements IAccountCredential {
 	/** The password to the Twitter account. */
 	password: string;
 
+	code: string;
+
 	/**
 	 * Initializes a new AccountCredential instance.
 	 *
@@ -25,5 +27,6 @@ export class AccountCredential implements IAccountCredential {
 		this.email = cred.email;
 		this.userName = cred.userName;
 		this.password = cred.password;
+		this.code = cred.code;
 	}
 }
